@@ -39,28 +39,66 @@ static bool if_keyword(std::string_view tok_content) {
     return false;
 }
 
-static Token* read_string_literal(char*& p, ASTContext& ctx) {
-    char* start = p;
-    char* q = start + 1;
+static int read_escaped_char(char* p) {
+    switch (*p) {
+    case 'a':
+        return '\a';
+    case 'b':
+        return '\b';
+    case 't':
+        return '\t';
+    case 'n':
+        return '\n';
+    case 'v':
+        return '\v';
+    case 'f':
+        return '\f';
+    case 'r':
+        return '\r';
+    case 'e':
+        return 27;
+    default:
+        return *p;
+    }
+}
+
+static char* string_literal_end(char* q) {
+    char* start = q;
     while (*q != '"') {
+
+        if (*q == '\\')
+            ++q;
+
         if (*q == '\0' || *q == '\n') {
             diagnostic::error_at(std::string_view(start, q - start), "unterminated string literal");
         }
-        q++;
+        ++q;
     }
-    int body_len = static_cast<int>(q - (start + 1));
-    int token_len = static_cast<int>(q - start) + 1;
+    return q;
+}
 
-    Token* new_token = ctx.make_token(TokenKind::STR, std::string_view(start, token_len));
+static Token* read_string_literal(char*& p, ASTContext& ctx) {
+    char* start = p;
+    char* end = string_literal_end(start + 1);
+    std::string bytes;
+    bytes.reserve(end - start - 1);
 
-    std::string bytes(start + 1, body_len);
-    bytes.push_back('\0');
+    for (char* cur = start + 1; cur < end;) {
+        if (*cur == '\\') {
+            bytes.push_back(static_cast<char>(read_escaped_char(cur + 1)));
+            cur += 2;
+        } else {
+            bytes.push_back(*cur);
+            cur++;
+        }
+    }
+    bytes.push_back('\0'); // end of string literal
+    int len = static_cast<int>(bytes.size());
+    Token* new_token = ctx.make_token(TokenKind::STR, std::string_view(start, end - start + 1));
+    new_token->set_type(ctx.make_array_type(ctx.get_char_type(), len));
     new_token->set_string(std::move(bytes));
 
-    Type* arr_type = ctx.make_array_type(ctx.get_char_type(), body_len + 1);
-    new_token->set_type(arr_type);
-
-    p = start + token_len;
+    p = end + 1;
     return new_token;
 }
 
@@ -104,7 +142,7 @@ Token* Tokenize(char* Input, ASTContext& ctx, const char* filename) {
             Token* new_token = read_string_literal(Input, ctx);
             current->set_next(new_token);
             current = current->get_next();
-            continue; // Input 已经被函数推进
+            continue;
         }
 
         if (std::isdigit(*Input)) {
