@@ -39,6 +39,14 @@ static bool if_keyword(std::string_view tok_content) {
     return false;
 }
 
+static int from_hex(char c) {
+    if ('0' <= c && c <= '9')
+        return c - '0';
+    if ('a' <= c && c <= 'f')
+        return c - 'a' + 10;
+    return c - 'A' + 10;
+}
+
 static int read_escaped_char(char** new_pos, char* p) {
     // Octal escape sequences have a length limit of three octal digits
     if ('0' <= *p && *p <= '7') {
@@ -50,6 +58,21 @@ static int read_escaped_char(char** new_pos, char* p) {
         }
         *new_pos = p;
         return c;
+    }
+
+    if (*p == 'x') {
+        ++p;
+        if (!std::isxdigit(static_cast<unsigned char>(*p))) {
+            diagnostic::error_at(std::string_view(p, 1), "invalid hex escape sequence");
+        }
+
+        unsigned int c = 0;
+        while (std::isxdigit(static_cast<unsigned char>(*p))) {
+            c = (c << 4) + static_cast<unsigned int>(from_hex(*p));
+            ++p;
+        }
+        *new_pos = p;
+        return static_cast<unsigned char>(c);
     }
 
     *new_pos = p + 1;
