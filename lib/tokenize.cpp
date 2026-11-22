@@ -39,7 +39,20 @@ static bool if_keyword(std::string_view tok_content) {
     return false;
 }
 
-static int read_escaped_char(char* p) {
+static int read_escaped_char(char** new_pos, char* p) {
+    // Octal escape sequences have a length limit of three octal digits
+    if ('0' <= *p && *p <= '7') {
+        int c = *p++ - '0';
+        if ('0' <= *p && *p <= '7') {
+            c = (c << 3) + static_cast<int>(*p++ - '0');
+            if ('0' <= *p && *p <= '7')
+                c = (c << 3) + static_cast<int>(*p++ - '0');
+        }
+        *new_pos = p;
+        return c;
+    }
+
+    *new_pos = p + 1;
     switch (*p) {
     case 'a':
         return '\a';
@@ -85,8 +98,7 @@ static Token* read_string_literal(char*& p, ASTContext& ctx) {
 
     for (char* cur = start + 1; cur < end;) {
         if (*cur == '\\') {
-            bytes.push_back(static_cast<char>(read_escaped_char(cur + 1)));
-            cur += 2;
+            bytes.push_back(static_cast<char>(read_escaped_char(&cur, cur + 1)));
         } else {
             bytes.push_back(*cur);
             cur++;
