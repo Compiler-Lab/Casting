@@ -4,15 +4,13 @@
 #include <iostream>
 
 // Round up n to the nearest multiple of align (e.g. 5,8 -> 8; 11,8 -> 16).
-int CodeGen::align_to(int n, int align) {
-    return (n + align - 1) / align * align;
-}
+int CodeGen::align_to(int n, int align) { return (n + align - 1) / align * align; }
 
 void CodeGen::load(Type* ty) {
     if (ty->get_kind() == TypeKind::TY_ARRAY) {
         return;
     }
-    if(ty->get_size() == 1) {
+    if (ty->get_size() == 1) {
         std::cout << "    movsbq (%rax), %rax\n";
     } else {
         std::cout << "    mov (%rax), %rax\n";
@@ -25,7 +23,7 @@ void CodeGen::store(Type* ty) {
     if (ty->get_kind() == TypeKind::TY_ARRAY) {
         return;
     }
-    if(ty->get_size() == 1) {
+    if (ty->get_size() == 1) {
         std::cout << "    movb %al, (%rdi)\n";
     } else {
         std::cout << "    mov %rax, (%rdi)\n";
@@ -44,16 +42,16 @@ void CodeGen::pop(const char* reg) {
 void CodeGen::emit_data(Program* program) {
     if (program->get_global_variable_begin()) {
         std::cout << "    .data\n";
-    }else{
+    } else {
         return;
     }
-    for(GlobalVariable* gv = program->get_global_variable_begin(); gv; gv = gv->get_next()) {
+    for (GlobalVariable* gv = program->get_global_variable_begin(); gv; gv = gv->get_next()) {
         std::cout << ".globl " << gv->get_name() << "\n";
         std::cout << gv->get_name() << ":\n";
-        if(gv->has_init_data()) {
+        if (gv->has_init_data()) {
             for (unsigned char c : gv->get_init_string())
                 std::cout << "    .byte " << static_cast<int>(c) << "\n";
-        } else if(gv->get_has_init()) {
+        } else if (gv->get_has_init()) {
             std::cout << "    .quad " << gv->get_init_val() << "\n";
         } else {
             std::cout << "    .zero " << gv->get_ty()->get_size() << "\n";
@@ -70,8 +68,9 @@ void CodeGen::store_function_params(Function* fn) {
 
     for (std::size_t i = 0; i < fn->get_params().size(); ++i) {
         LocalVariable* param = fn->get_params()[i];
-        if(param->get_ty()->get_kind() == TypeKind::TY_CHAR) {
-            std::cout << "    mov " << char_args_regs[i] << ", " << param->get_offset() << "(%rbp)\n";
+        if (param->get_ty()->get_kind() == TypeKind::TY_CHAR) {
+            std::cout << "    mov " << char_args_regs[i] << ", " << param->get_offset()
+                      << "(%rbp)\n";
         } else {
             std::cout << "    mov " << args_regs[i] << ", " << param->get_offset() << "(%rbp)\n";
         }
@@ -80,22 +79,21 @@ void CodeGen::store_function_params(Function* fn) {
 
 // Emit code to leave the address of the node in %rax. Valid for ND_VAR, ND_DEREF, ND_ADDR.
 void CodeGen::gen_addr(Node* node) {
-    switch(node->get_nodekind())
-    {
-        case NodeKind::ND_VAR:
-            std::cout << "    lea " << node->get_var()->get_offset() << "(%rbp), %rax\n";
-            break;
-        case NodeKind::ND_GVAR:
-            std::cout << "    lea " << node->get_gvar()->get_name() << "(%rip), %rax\n";
-            break;
-        case NodeKind::ND_DEREF:
-            gen_expr(node->get_lhs());
-            return;
-        case NodeKind::ND_ADDR:
-            gen_addr(node->get_lhs());
-            return;
-        default:
-            diagnostic::error_tok(node->get_tok(), "lvalue required for address-of or dereference");
+    switch (node->get_nodekind()) {
+    case NodeKind::ND_VAR:
+        std::cout << "    lea " << node->get_var()->get_offset() << "(%rbp), %rax\n";
+        break;
+    case NodeKind::ND_GVAR:
+        std::cout << "    lea " << node->get_gvar()->get_name() << "(%rip), %rax\n";
+        break;
+    case NodeKind::ND_DEREF:
+        gen_expr(node->get_lhs());
+        return;
+    case NodeKind::ND_ADDR:
+        gen_addr(node->get_lhs());
+        return;
+    default:
+        diagnostic::error_tok(node->get_tok(), "lvalue required for address-of or dereference");
     }
 }
 
@@ -111,11 +109,10 @@ void CodeGen::assign_lvar_offsets(Function* prog) {
     }
 }
 
-void CodeGen::gen_expr(Node* node)
-{
+void CodeGen::gen_expr(Node* node) {
     switch (node->get_nodekind()) {
     case NodeKind::ND_NUM:
-        std::cout <<"    mov $" << node->get_val() << ", %rax\n";
+        std::cout << "    mov $" << node->get_val() << ", %rax\n";
         return;
     case NodeKind::ND_NEG:
         gen_expr(node->get_lhs());
@@ -141,15 +138,12 @@ void CodeGen::gen_expr(Node* node)
         return;
     case NodeKind::ND_FUNCALL:
         int arg_count = 0;
-        for(Node* arg=node->get_args();arg;arg=arg->get_nextstmt())
-        {
+        for (Node* arg = node->get_args(); arg; arg = arg->get_nextstmt()) {
             gen_expr(arg);
             push();
             arg_count++;
-           
         }
-        for(int i = arg_count-1;i>=0;i--)
-        {
+        for (int i = arg_count - 1; i >= 0; i--) {
             pop(args_regs[i].data());
         }
         std::cout << "    call " << node->get_func_name() << "\n";
@@ -160,7 +154,7 @@ void CodeGen::gen_expr(Node* node)
     push();
     gen_expr(node->get_lhs());
     pop("%rdi");
-    
+
     switch (node->get_nodekind()) {
     case NodeKind::ND_ADD:
         std::cout << "    add %rdi, %rax\n";
@@ -175,7 +169,7 @@ void CodeGen::gen_expr(Node* node)
         std::cout << "    cqo\n";
         std::cout << "    idiv %rdi\n";
         break;
-    
+
     case NodeKind::ND_LT:
     case NodeKind::ND_EQ:
     case NodeKind::ND_NE:
@@ -190,7 +184,6 @@ void CodeGen::gen_expr(Node* node)
         else if (node->get_nodekind() == NodeKind::ND_LE)
             std::cout << "    setle %al\n";
 
-        
         std::cout << "    movzbq %al, %rax\n";
         break;
     default:
@@ -199,58 +192,54 @@ void CodeGen::gen_expr(Node* node)
 }
 
 void CodeGen::gen_stmt(Node* node) {
-    switch(node->get_nodekind())
-    {
-        case NodeKind::ND_IF: {
-            int seq=gen_label_seq();
+    switch (node->get_nodekind()) {
+    case NodeKind::ND_IF: {
+        int seq = gen_label_seq();
+        gen_expr(node->get_condition());
+        std::cout << "    cmp $0, %rax\n";
+        std::cout << "    je .L.else" << seq << "\n";
+        gen_stmt(node->get_then());
+        std::cout << "    jmp .L.end" << seq << "\n";
+        std::cout << ".L.else" << seq << ":\n";
+        if (node->get_els()) {
+            gen_stmt(node->get_els());
+        }
+        std::cout << ".L.end" << seq << ":\n";
+        return;
+    }
+    case NodeKind::ND_FOR: {
+        int seq = gen_label_seq();
+        if (node->get_init()) {
+            gen_stmt(node->get_init());
+        }
+        std::cout << ".L.begin" << seq << ":\n";
+        if (node->get_condition()) {
             gen_expr(node->get_condition());
             std::cout << "    cmp $0, %rax\n";
-            std::cout << "    je .L.else" << seq << "\n";
-            gen_stmt(node->get_then());
-            std::cout << "    jmp .L.end" << seq << "\n";
-            std::cout << ".L.else" << seq << ":\n";
-            if(node->get_els())
-            {
-                gen_stmt(node->get_els());
-            }
-            std::cout << ".L.end" << seq << ":\n";
-            return;
+            std::cout << "    je .L.end" << seq << "\n";
         }
-        case NodeKind::ND_FOR:{
-            int seq=gen_label_seq();
-            if(node->get_init()){
-                gen_stmt(node->get_init());
-            }
-            std::cout <<".L.begin" << seq << ":\n";
-            if(node->get_condition())
-            {
-                gen_expr(node->get_condition());
-                std::cout << "    cmp $0, %rax\n";
-                std::cout << "    je .L.end" << seq << "\n";
-            }
-            gen_stmt(node->get_then());
-            if(node->get_inc())
-            {
-                gen_expr(node->get_inc());
-            }
-            std::cout << "    jmp .L.begin" << seq << "\n";
-            std::cout << ".L.end" << seq << ":\n";
-            return;
+        gen_stmt(node->get_then());
+        if (node->get_inc()) {
+            gen_expr(node->get_inc());
         }
-        case NodeKind::ND_EXPR_STMT:
-            gen_expr(node->get_lhs());
-            return;
-        case NodeKind::ND_RETURN:
-            gen_expr(node->get_lhs());
-            std::cout << "    jmp .L.return."<<current_fn_->get_name()<<"\n";
-            return;
-        case NodeKind::ND_BLOCK:
-            for (Node* n = node->get_body(); n; n = n->get_nextstmt()) {
-                gen_stmt(n);
-            }
-            return;
-        default:
-            diagnostic::error_tok(node->get_tok(), "invalid statement");
+        std::cout << "    jmp .L.begin" << seq << "\n";
+        std::cout << ".L.end" << seq << ":\n";
+        return;
+    }
+    case NodeKind::ND_EXPR_STMT:
+        gen_expr(node->get_lhs());
+        return;
+    case NodeKind::ND_RETURN:
+        gen_expr(node->get_lhs());
+        std::cout << "    jmp .L.return." << current_fn_->get_name() << "\n";
+        return;
+    case NodeKind::ND_BLOCK:
+        for (Node* n = node->get_body(); n; n = n->get_nextstmt()) {
+            gen_stmt(n);
+        }
+        return;
+    default:
+        diagnostic::error_tok(node->get_tok(), "invalid statement");
     }
     diagnostic::error_tok(node->get_tok(), "invalid statement");
 }
@@ -260,7 +249,7 @@ void CodeGen::generate(Program* program_translation_unit) {
     emit_data(program_translation_unit);
     std::cout << "    .text\n";
     assign_lvar_offsets(program_translation_unit->get_function_begin());
-    
+
     for (Function* fn = program_translation_unit->get_function_begin(); fn; fn = fn->get_next()) {
         current_fn_ = fn;
         std::cout << "    .globl " << fn->get_name() << "\n";
@@ -279,8 +268,5 @@ void CodeGen::generate(Program* program_translation_unit) {
         std::cout << "    mov %rbp, %rsp\n";
         std::cout << "    pop %rbp\n";
         std::cout << "    ret\n";
-        }
-
-
-    
+    }
 }

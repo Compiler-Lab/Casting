@@ -14,8 +14,7 @@ class Type {
 public:
     // For TY_PTR extra is base; for TY_FUNC extra is return type; for TY_INT extra ignored.
     explicit Type(TypeKind kind, Type* extra = nullptr)
-        : kind_(kind),
-          base_(kind == TypeKind::TY_PTR ? extra : nullptr),
+        : kind_(kind), base_(kind == TypeKind::TY_PTR ? extra : nullptr),
           return_ty_(kind == TypeKind::TY_FUNC ? extra : nullptr) {}
 
     TypeKind get_kind() const { return kind_; }
@@ -34,8 +33,8 @@ public:
 
 private:
     TypeKind kind_;
-    int size_;  //size of value;
-    int array_len_; //length of array;
+    int size_;      // size of value;
+    int array_len_; // length of array;
     Type* base_ = nullptr;
     Type* return_ty_ = nullptr;
     std::vector<Type*> param_types_;
@@ -46,5 +45,6 @@ private:
 
 bool is_integer_or_char(Type* ty, ASTContext& ctx);
 Type* get_ty_int(ASTContext& ctx);
-// Recursively assign type to every node in the AST (bottom-up). Called from compound_stmt after each stmt.
+// Recursively assign type to every node in the AST (bottom-up). Called from compound_stmt after
+// each stmt.
 void add_type(Node* node, ASTContext& ctx);

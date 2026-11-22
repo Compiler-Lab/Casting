@@ -3,13 +3,9 @@
 #include "context.h"
 #include "diagnostic.h"
 
-Type* get_ty_int(ASTContext& ctx) {
-    return ctx.get_int_type();
-}
+Type* get_ty_int(ASTContext& ctx) { return ctx.get_int_type(); }
 
-Type* get_ty_char(ASTContext& ctx) {
-    return ctx.get_char_type();
-}
+Type* get_ty_char(ASTContext& ctx) { return ctx.get_char_type(); }
 
 bool is_integer_or_char(Type* ty, ASTContext& ctx) {
     return ty && (ty->get_kind() == TypeKind::TY_INT || ty->get_kind() == TypeKind::TY_CHAR);
@@ -31,7 +27,7 @@ void add_type(Node* node, ASTContext& ctx) {
         add_type(n, ctx);
     for (Node* arg = node->get_args(); arg; arg = arg->get_nextstmt())
         add_type(arg, ctx);
-   
+
     switch (node->get_nodekind()) {
     case NodeKind::ND_GVAR:
         node->set_ty(node->get_gvar()->get_ty());
@@ -43,7 +39,7 @@ void add_type(Node* node, ASTContext& ctx) {
     case NodeKind::ND_NEG:
         node->set_ty(node->get_lhs()->get_ty());
         return;
-    case NodeKind::ND_ASSIGN:{
+    case NodeKind::ND_ASSIGN: {
         Type* lhs_ty = node->get_lhs()->get_ty();
         if (lhs_ty && lhs_ty->get_kind() == TypeKind::TY_ARRAY)
             diagnostic::error_tok(node->get_tok(), "invalid array assignment");
@@ -67,7 +63,7 @@ void add_type(Node* node, ASTContext& ctx) {
         else
             node->set_ty(ctx.make_ptr_type(lhs_ty));
         return;
-    }      
+    }
     case NodeKind::ND_DEREF: {
         Type* lhs_ty = node->get_lhs()->get_ty();
         if (!lhs_ty || !lhs_ty->get_base())

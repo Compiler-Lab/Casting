@@ -1,7 +1,7 @@
 #include "diagnostic.h"
 #include "tokenize.h"
-#include <iostream>
 #include <cstdlib>
+#include <iostream>
 
 namespace diagnostic {
 

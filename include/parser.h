@@ -5,26 +5,29 @@
 
 class ASTContext;
 
-// Parsing layers: parse() -> function() -> compound_stmt()/stmt()/declaration() -> expr()/assign()/...
-// Types come from declspec()/declarator(); Obj is created in declaration() and linked in locals.
-// add_type() is called from compound_stmt() after each stmt (in type.cpp), not inside the parser.
+// Parsing layers: parse() -> function() -> compound_stmt()/stmt()/declaration() ->
+// expr()/assign()/... Types come from declspec()/declarator(); Obj is created in declaration() and
+// linked in locals. add_type() is called from compound_stmt() after each stmt (in type.cpp), not
+// inside the parser.
 class Parser {
 private:
     Token* current_;
-    LocalVariable* locals = nullptr;  // Head of current function's local variable list; reset at start of each function().
+    LocalVariable* locals = nullptr; // Head of current function's local variable list; reset at
+                                     // start of each function().
     ASTContext& ctx_;
     Program* program_ = nullptr;
 
     // --- AST node construction ---
     Node* new_binary(NodeKind kind, Node* lhs, Node* rhs, Token* tok);
     Node* make_binary(NodeKind kind, Node* lhs, Node* rhs, Token* op_tok);
-    Node* make_func_call(NodeKind kind,Token* op_tok,std::string_view func_name);
+    Node* make_func_call(NodeKind kind, Token* op_tok, std::string_view func_name);
     Node* make_gvar_node(GlobalVariable* gvar, Token* tok);
 
-    // --- Expression parsing (precedence climbing: expr -> assign -> equality -> ... -> primary) ---
-    Node* primary();       // ( expr ) | ident [ ( args ) ] | num
-    Node* funcall();       // ident "(" [ assign ( "," assign )* ] ")"
-    Node* mul();           // * /
+    // --- Expression parsing (precedence climbing: expr -> assign -> equality -> ... -> primary)
+    // ---
+    Node* primary(); // ( expr ) | ident [ ( args ) ] | num
+    Node* funcall(); // ident "(" [ assign ( "," assign )* ] ")"
+    Node* mul();     // * /
     Node* expr();
     Node* postfix();       // [ ]
     Node* unary();         // + - * &
@@ -39,7 +42,7 @@ private:
     // --- Local symbols: find_var looks up in locals; new_lvar adds and chains ---
     LocalVariable* find_var(Token* tok);
     Node* new_var_node(LocalVariable* var, Token* tok);
-    LocalVariable* new_lvar(const std::string& name,Type* ty);
+    LocalVariable* new_lvar(const std::string& name, Type* ty);
 
     // --- Typed add/sub: require add_type on operands, then dispatch int vs pointer ---
     Node* new_num(int val, Token* tok);
@@ -60,8 +63,9 @@ private:
     Function* parse_function_definition(const DeclaratorResult& decl);
     GlobalVariable* find_gvar_variable(Token* tok);
 
-    void parse_external_declaration(Program* program); //function declaration
-    void parse_global_declaration(Program* program, Type* basety, DeclaratorResult first); // global variable declaration
+    void parse_external_declaration(Program* program); // function declaration
+    void parse_global_declaration(Program* program, Type* basety,
+                                  DeclaratorResult first); // global variable declaration
 
     // --- String literal: emitted as an anonymous global initialized with raw bytes. ---
     std::string new_unique_name();
@@ -69,30 +73,25 @@ private:
     GlobalVariable* new_string_literal(Token* tok);
 
     int eval_const_expr(Node* node);
+
 public:
-    explicit Parser(Token* tk,ASTContext& ctx) : current_(tk) ,ctx_(ctx){}
+    explicit Parser(Token* tk, ASTContext& ctx) : current_(tk), ctx_(ctx) {}
 
     Program* parse();
 
-    // --- Token stream: consume/expect/check/peek/advance (parser owns current_, tokens live in ctx) ---
-    bool consume(const char* op )
-    {
-        if(Tkequal(current_, op))
-        {
+    // --- Token stream: consume/expect/check/peek/advance (parser owns current_, tokens live in
+    // ctx) ---
+    bool consume(const char* op) {
+        if (Tkequal(current_, op)) {
             current_ = current_->get_next();
             return true;
         }
         return false;
     }
 
-    void expect(const char* op)
-    {
-        Tkskip(current_, op);
-    }
+    void expect(const char* op) { Tkskip(current_, op); }
 
-    bool check(const char* op) const {
-        return Tkequal(current_, op);
-    }
+    bool check(const char* op) const { return Tkequal(current_, op); }
 
     Token* peek() const { return current_; }
 
@@ -101,7 +100,8 @@ public:
         return current_ ? current_->get_content() : std::string_view{};
     }
 
-    /// Returns true if the token after the current one has the given content (e.g. ident followed by "(").
+    /// Returns true if the token after the current one has the given content (e.g. ident followed
+    /// by "(").
     bool is_followed_by(const char* str) const {
         Token* next = current_ ? current_->get_next() : nullptr;
         return next && Tkequal(next, str);

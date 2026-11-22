@@ -1,27 +1,26 @@
 #include "parser.h"
 #include "astnode.h"
-#include "tokenize.h"
-#include "diagnostic.h"
 #include "context.h"
+#include "diagnostic.h"
+#include "tokenize.h"
 #include "type.h"
 #include <vector>
 
-// --- Program: list of function definitions. Types come from declspec/declarator; Obj from declaration(). ---
+// --- Program: list of function definitions. Types come from declspec/declarator; Obj from
+// declaration(). ---
 Program* Parser::parse() {
 
-    program_ = ctx_.make_program(); 
+    program_ = ctx_.make_program();
     while (peek()->get_kind() != TokenKind::EOF_TK) {
         parse_external_declaration(program_);
     }
     return program_;
-    
 }
 // --- Top-level helper function ---
 void Parser::parse_external_declaration(Program* program) {
     Type* basety = declspec();
     DeclaratorResult first = declarator(basety);
 
-    
     if (first.type->get_kind() == TypeKind::TY_FUNC && check("{")) {
         Function* fn = parse_function_definition(first);
         program->append_function(fn);
@@ -33,27 +32,26 @@ void Parser::parse_external_declaration(Program* program) {
 
 void Parser::parse_global_declaration(Program* program, Type* basety, DeclaratorResult first) {
     DeclaratorResult decl = std::move(first);
-    while(true){
+    while (true) {
 
-        if(decl.type->get_kind() == TypeKind::TY_FUNC) {
+        if (decl.type->get_kind() == TypeKind::TY_FUNC) {
             diagnostic::error_tok(decl.name_tok, "expected a global variable declaration");
         }
         GlobalVariable* gv = ctx_.make_global_variable(decl.name_tok->get_content(), decl.type);
         program->append_global_variable(gv);
 
-        if(consume("=")) {
+        if (consume("=")) {
             if (decl.type->get_kind() != TypeKind::TY_INT)
                 diagnostic::error_tok(peek(), "global initializer is only supported for int");
 
             Node* init = assign();
             gv->set_init_val(eval_const_expr(init));
         }
-        if(consume(";")) {
+        if (consume(";")) {
             return;
         }
         expect(",");
         decl = declarator(basety);
-        
     }
 }
 
@@ -100,7 +98,6 @@ int Parser::eval_const_expr(Node* node) {
         diagnostic::error_tok(node->get_tok(), "not a constant expression");
     }
 }
-
 
 GlobalVariable* Parser::find_gvar_variable(Token* tok) {
     std::string_view name = tok->get_content();
@@ -166,9 +163,8 @@ Node* Parser::make_binary(NodeKind kind, Node* lhs, Node* rhs, Token* op_tok) {
     return new_binary(kind, lhs, rhs, op_tok);
 }
 
-Node* Parser::make_func_call(NodeKind kind,Token* op_tok,std::string_view func_name)
-{
-    Node* node=ctx_.make_node(kind,nullptr,nullptr);
+Node* Parser::make_func_call(NodeKind kind, Token* op_tok, std::string_view func_name) {
+    Node* node = ctx_.make_node(kind, nullptr, nullptr);
     node->set_tok(op_tok);
     node->set_func_name(func_name);
     return node;
@@ -199,7 +195,6 @@ Node* Parser::new_add(Node* lhs, Node* rhs, Token* tok) {
     return new_binary(NodeKind::ND_ADD, lhs, rhs, tok);
 }
 
-
 // int-int: sub. ptr-int: scale then sub. ptr-ptr: byte difference / 8.
 Node* Parser::new_sub(Node* lhs, Node* rhs, Token* tok) {
     add_type(lhs, ctx_);
@@ -220,7 +215,7 @@ Node* Parser::new_sub(Node* lhs, Node* rhs, Token* tok) {
 
     if (lhs->get_ty()->get_base() && rhs->get_ty()->get_base()) {
         Node* node = new_binary(NodeKind::ND_SUB, lhs, rhs, tok);
-        node->set_ty(get_ty_int( ctx_));
+        node->set_ty(get_ty_int(ctx_));
         return new_binary(NodeKind::ND_DIV, node, new_num(scale, tok), tok);
     }
 
@@ -228,19 +223,17 @@ Node* Parser::new_sub(Node* lhs, Node* rhs, Token* tok) {
 }
 
 // --- Declaration specifier: currently only "int" ---
-Type* Parser::declspec()
-{
-    if(consume("int")) {
+Type* Parser::declspec() {
+    if (consume("int")) {
         return ctx_.get_int_type();
     }
-    if(consume("char")) {
+    if (consume("char")) {
         return ctx_.get_char_type();
     }
     diagnostic::error_at(peek()->get_content(), "expected int or char");
 }
 
-Type* Parser::type_suffix(Type* ty, std::vector<ParsedParam>& params)
-{
+Type* Parser::type_suffix(Type* ty, std::vector<ParsedParam>& params) {
     if (consume("(")) {
         params = parse_function_params();
         expect(")");
@@ -250,11 +243,11 @@ Type* Parser::type_suffix(Type* ty, std::vector<ParsedParam>& params)
         for (const ParsedParam& param : params)
             param_types.push_back(param.type);
 
-        return ctx_.make_func_type(ty, std::move(param_types)); 
+        return ctx_.make_func_type(ty, std::move(param_types));
     }
 
     if (consume("[")) {
-        int len  = peek()->get_number();
+        int len = peek()->get_number();
         advance();
         expect("]");
         ty = type_suffix(ty, params);
@@ -300,15 +293,14 @@ std::vector<LocalVariable*> Parser::create_param_locals(const std::vector<Parsed
 // Declarator: * * ident [ "(" func-params? ")" ].
 // The returned structure includes the fully built type, the declared name token,
 // and the parsed parameter metadata when the declarator is a function.
-DeclaratorResult Parser::declarator(Type* basety)
-{
+DeclaratorResult Parser::declarator(Type* basety) {
     Type* ty = basety;
     while (consume("*"))
         ty = ctx_.make_ptr_type(ty);
 
     if (peek()->get_kind() != TokenKind::IDENT)
         diagnostic::error_at(peek()->get_content(), "expected an identifier");
-    Token* ident_tok=peek();
+    Token* ident_tok = peek();
     advance();
 
     std::vector<ParsedParam> params;
@@ -318,8 +310,7 @@ DeclaratorResult Parser::declarator(Type* basety)
 }
 
 // int a, b = 3; : declspec once, then per-declarator type + new_lvar; optional init as assign stmt.
-Node* Parser::declaration()
-{
+Node* Parser::declaration() {
     Token* decl_tok = peek();
     Type* basety = declspec();
 
@@ -327,42 +318,41 @@ Node* Parser::declaration()
     Node* cur = &head;
     bool first = true;
     while (!check(";")) {
-        if (!first) 
-        {
+        if (!first) {
             expect(",");
         }
-        first=false;
-        
+        first = false;
+
         DeclaratorResult decl = declarator(basety);
         Type* ty = decl.type;
         Token* ident_tok = decl.name_tok;
         std::string name(ident_tok->get_content());
-        LocalVariable* var=new_lvar(name,ty);
+        LocalVariable* var = new_lvar(name, ty);
 
-        if(!check("="))
+        if (!check("="))
             continue;
 
-        Token* assign_tk=peek();
+        Token* assign_tk = peek();
         consume("=");
-        Node* rhs=assign();
-        Node* lhs= new_var_node(var,ident_tok);
-        Node* assign_node=make_binary(NodeKind::ND_ASSIGN,lhs,rhs,assign_tk);
-        Node* stmt_node=ctx_.make_node(NodeKind::ND_EXPR_STMT,assign_node);
+        Node* rhs = assign();
+        Node* lhs = new_var_node(var, ident_tok);
+        Node* assign_node = make_binary(NodeKind::ND_ASSIGN, lhs, rhs, assign_tk);
+        Node* stmt_node = ctx_.make_node(NodeKind::ND_EXPR_STMT, assign_node);
         stmt_node->set_tok(assign_tk);
         cur->set_nextstmt(stmt_node);
-        cur=stmt_node;
+        cur = stmt_node;
     }
     expect(";");
 
-    Node* node=ctx_.make_node(NodeKind::ND_BLOCK);
+    Node* node = ctx_.make_node(NodeKind::ND_BLOCK);
     node->set_tok(decl_tok);
     node->set_body(head.get_nextstmt());
     return node;
 }
 
-// --- Compound statement: { stmt* }. Each stmt is declaration() or stmt(). add_type called after each. ---
-Node* Parser::compound_stmt()
-{
+// --- Compound statement: { stmt* }. Each stmt is declaration() or stmt(). add_type called after
+// each. ---
+Node* Parser::compound_stmt() {
     Token* block_tok = peek();
     Node head(NodeKind::ND_EXPR_STMT);
     Node* cur = &head;
@@ -373,7 +363,7 @@ Node* Parser::compound_stmt()
         else
             cur->set_nextstmt(stmt());
         cur = cur->get_nextstmt();
-        add_type(cur,ctx_);
+        add_type(cur, ctx_);
     }
     Node* node = ctx_.make_node(NodeKind::ND_BLOCK);
     node->set_tok(block_tok);
@@ -383,8 +373,7 @@ Node* Parser::compound_stmt()
 }
 
 // --- Statement: return | while | for | if | block | expr ; ---
-Node* Parser::stmt()
-{
+Node* Parser::stmt() {
     if (check("return")) {
         Token* ret_tok = peek();
         consume("return");
@@ -445,8 +434,7 @@ Node* Parser::stmt()
     return expr_stmt();
 }
 
-Node* Parser::expr_stmt()
-{
+Node* Parser::expr_stmt() {
     Token* stmt_tok = peek();
     if (consume(";")) {
         Node* node = ctx_.make_node(NodeKind::ND_BLOCK);
@@ -459,9 +447,9 @@ Node* Parser::expr_stmt()
     return node;
 }
 
-// --- Expression: assign is top level (right-associative =), then equality, relational, add, mul, unary, primary ---
-Node* Parser::assign()
-{
+// --- Expression: assign is top level (right-associative =), then equality, relational, add, mul,
+// unary, primary ---
+Node* Parser::assign() {
     Node* node = equality();
 
     if (check("=")) {
@@ -473,13 +461,9 @@ Node* Parser::assign()
     return node;
 }
 
-Node* Parser::expr()
-{
-    return assign();
-}
+Node* Parser::expr() { return assign(); }
 
-Node* Parser::equality()
-{
+Node* Parser::equality() {
     Node* node = relational();
 
     for (;;) {
@@ -500,8 +484,7 @@ Node* Parser::equality()
 }
 
 // Parse >=, >, <=, < (relational operators).
-Node* Parser::relational()
-{
+Node* Parser::relational() {
     Node* node = add();
     for (;;) {
         if (check(">=")) {
@@ -552,8 +535,7 @@ Node* Parser::add() {
     }
 }
 
-Node* Parser::mul()
-{
+Node* Parser::mul() {
     Node* node = unary();
     for (;;) {
         if (check("*")) {
@@ -572,9 +554,9 @@ Node* Parser::mul()
     }
 }
 
-// Primary: ( expr ) | ident [ ( args ) ] | num. Ident + "(" -> funcall; else find_var and make ND_VAR.
-Node* Parser::primary()
-{
+// Primary: ( expr ) | ident [ ( args ) ] | num. Ident + "(" -> funcall; else find_var and make
+// ND_VAR.
+Node* Parser::primary() {
     if (consume("(")) {
         Node* node = expr();
         expect(")");
@@ -585,22 +567,22 @@ Node* Parser::primary()
             return funcall();
         Token* ident_tok = peek();
 
-        if(LocalVariable* var = find_var(peek())) {
+        if (LocalVariable* var = find_var(peek())) {
             if (!var)
                 diagnostic::error_tok(ident_tok, "undefined variable");
             advance();
             return new_var_node(var, ident_tok);
         }
 
-        if(GlobalVariable* gvar = find_gvar_variable(peek())) {
+        if (GlobalVariable* gvar = find_gvar_variable(peek())) {
             if (!gvar)
                 diagnostic::error_tok(ident_tok, "undefined variable");
             advance();
             return make_gvar_node(gvar, ident_tok);
         }
-        diagnostic::error_tok(ident_tok, "undefined variable");    
+        diagnostic::error_tok(ident_tok, "undefined variable");
     }
-    if(peek()->get_kind() == TokenKind::STR) {
+    if (peek()->get_kind() == TokenKind::STR) {
         Token* str_tok = peek();
         GlobalVariable* gvar = new_string_literal(str_tok);
         advance();
@@ -617,18 +599,18 @@ Node* Parser::primary()
     diagnostic::error_at(peek()->get_content(), "expected an expression");
 }
 
-// Postfix: operator [ ]  
+// Postfix: operator [ ]
 // a[b]  ==  *(a + b)
 Node* Parser::postfix() {
 
     Node* node = primary();
 
-    while(check("[")) {
+    while (check("[")) {
         Token* bracket_tok = peek();
         consume("[");
         Node* index = expr();
         expect("]");
-        node = ctx_.make_node(NodeKind::ND_DEREF,new_add(node,index,bracket_tok));
+        node = ctx_.make_node(NodeKind::ND_DEREF, new_add(node, index, bracket_tok));
         node->set_tok(bracket_tok);
     }
 
@@ -637,8 +619,7 @@ Node* Parser::postfix() {
 
 // Unary: + - * & (then unary) or postfix.
 // sizeof(expr) complier time calculation of the size of the expression
-Node* Parser::unary()
-{
+Node* Parser::unary() {
     if (consume("+"))
         return unary();
     if (check("-")) {
@@ -662,7 +643,7 @@ Node* Parser::unary()
         node->set_tok(deref_tok);
         return node;
     }
-    if(check("sizeof")) {
+    if (check("sizeof")) {
         Token* sizeof_tok = peek();
         consume("sizeof");
         Node* node = unary();
@@ -673,22 +654,20 @@ Node* Parser::unary()
 }
 
 // Function call: ident ( [ assign ( "," assign )* ] ). Args stored as list via set_nextstmt.
-Node* Parser::funcall()
-{
+Node* Parser::funcall() {
     Token* func_name_tok = peek();
     advance();
     expect("(");
     Node head(NodeKind::ND_EXPR_STMT);
-    Node* cur=&head;
-    while(!check(")"))
-    {
-        if(consume("void"))
+    Node* cur = &head;
+    while (!check(")")) {
+        if (consume("void"))
             continue;
-        if(cur!=&head)
+        if (cur != &head)
             expect(",");
-        Node* arg=assign();
+        Node* arg = assign();
         cur->set_nextstmt(arg);
-        cur=arg;
+        cur = arg;
     }
     expect(")");
     Node* node = make_func_call(NodeKind::ND_FUNCALL, func_name_tok, func_name_tok->get_content());
@@ -711,19 +690,18 @@ Function* Parser::parse_function_definition(const DeclaratorResult& decl) {
     return fn;
 }
 
-// One function: declspec + declarator (name + optional () for function type), then { compound_stmt }.
-// locals reset so this function's declarations build a fresh list; that list is stored in the Function.
-Function* Parser::function()
-{
+// One function: declspec + declarator (name + optional () for function type), then { compound_stmt
+// }. locals reset so this function's declarations build a fresh list; that list is stored in the
+// Function.
+Function* Parser::function() {
     // Reset the local symbol list before starting a new function so parameters
     // and local declarations for different functions never mix together.
     Type* basety = declspec();
     DeclaratorResult decl = declarator(basety);
-    
-    if(decl.type->get_kind()!=TypeKind::TY_FUNC) {
+
+    if (decl.type->get_kind() != TypeKind::TY_FUNC) {
         diagnostic::error_tok(decl.name_tok, "expected a function declaration");
     }
 
     return parse_function_definition(decl);
-    
 }

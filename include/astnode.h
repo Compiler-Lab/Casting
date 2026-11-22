@@ -11,7 +11,6 @@ class Function;
 class Program;
 class GlobalVariable;
 
-
 // --- AST and symbol representation ---
 // Obj: one local variable (name, type, stack offset). Linked via next_ per function.
 // Function: one function (body AST, locals list, name). Linked via next_ for the program.
@@ -42,33 +41,38 @@ private:
 
 // Global variable: name, type, and address.
 class GlobalVariable {
-    public:
-        GlobalVariable(std::string_view name, Type* ty, GlobalVariable* next = nullptr)
-            : next_(next), name_(std::move(name)), ty_(ty) {};
-            
-        GlobalVariable* get_next() const { return next_; }
-        void set_next(GlobalVariable* next) { next_ = next; }
-    
-        const std::string_view& get_name() const { return name_; }
-        Type* get_ty() const { return ty_; }
+public:
+    GlobalVariable(std::string_view name, Type* ty, GlobalVariable* next = nullptr)
+        : next_(next), name_(std::move(name)), ty_(ty) {};
 
-        bool get_has_init() const { return has_init_; }
-        int get_init_val() const { return init_val_; }
-        void set_init_val(int val) { init_val_ = val; has_init_ = true; }
+    GlobalVariable* get_next() const { return next_; }
+    void set_next(GlobalVariable* next) { next_ = next; }
 
-        bool has_init_data() const { return has_init_string_;}
-        const std::string& get_init_string() const { return init_string_; }
-        void set_init_string(std::string str) { init_string_ = std::move(str); has_init_string_ = true; }
+    const std::string_view& get_name() const { return name_; }
+    Type* get_ty() const { return ty_; }
 
-    private:
-        GlobalVariable* next_ = nullptr;
-        std::string_view name_;
-        Type* ty_ = nullptr;
-        bool has_init_ = false;
-        int init_val_ = 0;
-        std::string init_string_;
-        bool has_init_string_ = false;
-        
+    bool get_has_init() const { return has_init_; }
+    int get_init_val() const { return init_val_; }
+    void set_init_val(int val) {
+        init_val_ = val;
+        has_init_ = true;
+    }
+
+    bool has_init_data() const { return has_init_string_; }
+    const std::string& get_init_string() const { return init_string_; }
+    void set_init_string(std::string str) {
+        init_string_ = std::move(str);
+        has_init_string_ = true;
+    }
+
+private:
+    GlobalVariable* next_ = nullptr;
+    std::string_view name_;
+    Type* ty_ = nullptr;
+    bool has_init_ = false;
+    int init_val_ = 0;
+    std::string init_string_;
+    bool has_init_string_ = false;
 };
 
 // Function: body (first stmt of compound), locals list, and name. next_ chains all functions.
@@ -79,7 +83,7 @@ public:
     Function() = default;
 
     Function(Node* body, LocalVariable* locals, std::string_view name)
-    : body_(body), locals_(locals), stack_size_(0), next_(nullptr), name_(name) {}
+        : body_(body), locals_(locals), stack_size_(0), next_(nullptr), name_(name) {}
 
     Node* get_body() const { return body_; }
     void set_body(Node* body) { body_ = body; }
@@ -87,7 +91,7 @@ public:
     void set_locals(LocalVariable* locals) { locals_ = locals; }
     int get_stack_size() const { return stack_size_; }
     void set_stack_size(int size) { stack_size_ = size; }
-    
+
     Function* get_next() const { return next_; }
     void set_next(Function* fn) { next_ = fn; }
     std::string_view get_name() const { return name_; }
@@ -100,7 +104,7 @@ private:
     Node* body_ = nullptr;
     LocalVariable* locals_ = nullptr;
     int stack_size_ = 0;
-    Function* next_=nullptr;
+    Function* next_ = nullptr;
     std::string_view name_;
 
     std::vector<LocalVariable*> params_;
@@ -108,53 +112,72 @@ private:
 
 // Top level program object. It's an abstraction of translate unit in LLVM IR.
 class Program {
-    public:
-    Program(Function* function_begin = nullptr, GlobalVariable* global_begin = nullptr, std::string_view file_name = {})
-        : function_begin_(function_begin), file_name_(file_name), global_variable_begin_(global_begin) {}
-    
-        Function* get_function_begin() const { return function_begin_; }
-        GlobalVariable* get_global_variable_begin() const { return global_variable_begin_; }
+public:
+    Program(Function* function_begin = nullptr, GlobalVariable* global_begin = nullptr,
+            std::string_view file_name = {})
+        : function_begin_(function_begin), file_name_(file_name),
+          global_variable_begin_(global_begin) {}
 
-        void append_function(Function* fn) {
-            if(!function_begin_) {
-                function_begin_ = fn;
-                return;
-            } else {
-                Function* cur = function_begin_;
-                while (cur->get_next()) {
-                    cur = cur->get_next();
-                }
-                cur->set_next(fn);
+    Function* get_function_begin() const { return function_begin_; }
+    GlobalVariable* get_global_variable_begin() const { return global_variable_begin_; }
+
+    void append_function(Function* fn) {
+        if (!function_begin_) {
+            function_begin_ = fn;
+            return;
+        } else {
+            Function* cur = function_begin_;
+            while (cur->get_next()) {
+                cur = cur->get_next();
             }
+            cur->set_next(fn);
         }
+    }
 
-        void append_global_variable(GlobalVariable* gv) {
-            if(!global_variable_begin_) {
-                global_variable_begin_ = gv;
-                return;
-            } else {
-                GlobalVariable* cur = global_variable_begin_;
-                while (cur->get_next()) {
-                    cur = cur->get_next();
-                }
-                cur->set_next(gv);
+    void append_global_variable(GlobalVariable* gv) {
+        if (!global_variable_begin_) {
+            global_variable_begin_ = gv;
+            return;
+        } else {
+            GlobalVariable* cur = global_variable_begin_;
+            while (cur->get_next()) {
+                cur = cur->get_next();
             }
+            cur->set_next(gv);
         }
-        
-    private:
-        // TODO: gloable valuables , typedef , .....
-        Function* function_begin_ = nullptr;
-        std::string_view file_name_;
-        GlobalVariable* global_variable_begin_ = nullptr;
+    }
 
+private:
+    // TODO: gloable valuables , typedef , .....
+    Function* function_begin_ = nullptr;
+    std::string_view file_name_;
+    GlobalVariable* global_variable_begin_ = nullptr;
 };
 
-// AST node kind. Which of lhs/rhs/body/condition/then/els/init/inc/var/args is valid depends on kind.
+// AST node kind. Which of lhs/rhs/body/condition/then/els/init/inc/var/args is valid depends on
+// kind.
 enum class NodeKind {
-    ND_ADD, ND_SUB, ND_MUL, ND_DIV, ND_NUM, ND_NEG,
-    ND_EQ, ND_NE, ND_LT, ND_LE,
-    ND_EXPR_STMT, ND_ASSIGN, ND_VAR, ND_GVAR ,ND_RETURN, ND_BLOCK,
-    ND_IF, ND_FOR, ND_ADDR, ND_DEREF, ND_FUNCALL,
+    ND_ADD,
+    ND_SUB,
+    ND_MUL,
+    ND_DIV,
+    ND_NUM,
+    ND_NEG,
+    ND_EQ,
+    ND_NE,
+    ND_LT,
+    ND_LE,
+    ND_EXPR_STMT,
+    ND_ASSIGN,
+    ND_VAR,
+    ND_GVAR,
+    ND_RETURN,
+    ND_BLOCK,
+    ND_IF,
+    ND_FOR,
+    ND_ADDR,
+    ND_DEREF,
+    ND_FUNCALL,
 };
 // ParsedParam describes one parameter in a function declarator.
 // It does not own the token or the type object; both are managed by ASTContext.
@@ -177,18 +200,18 @@ private:
     Node* lhs = nullptr;
     Node* rhs = nullptr;
     Node* next = nullptr;
-    Token* tok = nullptr;   // For error reporting.
-    int val = 0;            // ND_NUM only.
-    LocalVariable* var = nullptr;    // ND_VAR only.
-    GlobalVariable* gvar = nullptr;    // ND_GVAR only.
-    Node* body = nullptr;   // ND_BLOCK, ND_EXPR_STMT (as stmt list), etc.
-    Node* condition = nullptr;  // ND_IF, ND_FOR.
+    Token* tok = nullptr;           // For error reporting.
+    int val = 0;                    // ND_NUM only.
+    LocalVariable* var = nullptr;   // ND_VAR only.
+    GlobalVariable* gvar = nullptr; // ND_GVAR only.
+    Node* body = nullptr;           // ND_BLOCK, ND_EXPR_STMT (as stmt list), etc.
+    Node* condition = nullptr;      // ND_IF, ND_FOR.
     Node* then = nullptr;
     Node* els = nullptr;
     Node* init = nullptr;
     Node* inc = nullptr;
 
-    Type* ty = nullptr;         // Filled by add_type() (type.cpp); used by codegen and parser (+/-).
+    Type* ty = nullptr; // Filled by add_type() (type.cpp); used by codegen and parser (+/-).
     std::string_view func_name; // ND_FUNCALL: callee name.
     Node* args = nullptr;       // ND_FUNCALL: first argument (chain via get_nextstmt()).
 

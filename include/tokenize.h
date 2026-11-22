@@ -1,6 +1,6 @@
 #pragma once
-#include <string_view>
 #include <string>
+#include <string_view>
 
 class ASTContext;
 class Type;
@@ -10,7 +10,7 @@ enum class TokenKind {
     IDENT,   // Identifier (later promoted to KEYWORD if matches keyword)
     NUM,     // Integer literal
     KEYWORD, // if, else, return, for, while, int
-    STR, // string literal
+    STR,     // string literal
     EOF_TK,
 };
 
@@ -18,7 +18,7 @@ class Token {
 private:
     TokenKind TKind;
     Token* TKnext = nullptr;
-    int TKval = 0;  // Numeric value when TKind == NUM
+    int TKval = 0; // Numeric value when TKind == NUM
     std::string_view TKContent;
 
     // string literal
@@ -28,8 +28,7 @@ private:
 public:
     Token(TokenKind kind, std::string_view content, int val)
         : TKind(kind), TKContent(content), TKval(val) {}
-    Token(TokenKind kind, std::string_view content)
-        : TKind(kind), TKContent(content) {}
+    Token(TokenKind kind, std::string_view content) : TKind(kind), TKContent(content) {}
 
     TokenKind get_kind() const { return TKind; }
     int get_number() const;

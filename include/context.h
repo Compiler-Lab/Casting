@@ -1,6 +1,6 @@
 #pragma once
-#include "tokenize.h"
 #include "astnode.h"
+#include "tokenize.h"
 #include "type.h"
 
 #include <memory>
@@ -12,16 +12,14 @@
 // ASTContext keeps unique_ptrs so that everything is freed when ctx goes out of scope.
 class ASTContext {
 public:
-    template<class... Args>
-    Token* make_token(Args&&... args) {
+    template <class... Args> Token* make_token(Args&&... args) {
         auto p = std::make_unique<Token>(std::forward<Args>(args)...);
         Token* raw = p.get();
         tokens_.push_back(std::move(p));
         return raw;
     }
 
-    template<class... Args>
-    Node* make_node(Args&&... args) {
+    template <class... Args> Node* make_node(Args&&... args) {
         auto p = std::make_unique<Node>(std::forward<Args>(args)...);
         Node* raw = p.get();
         nodes_.push_back(std::move(p));
@@ -35,24 +33,21 @@ public:
         return raw;
     }
 
-    template<class... Args>
-    Function* make_function(Args&&... args) {
+    template <class... Args> Function* make_function(Args&&... args) {
         auto p = std::make_unique<Function>(std::forward<Args>(args)...);
         Function* raw = p.get();
         funcs_.push_back(std::move(p));
         return raw;
     }
-    
-    template<class... Args>
-    Program* make_program(Args&&... args) {
+
+    template <class... Args> Program* make_program(Args&&... args) {
         auto p = std::make_unique<Program>(std::forward<Args>(args)...);
         Program* raw = p.get();
         programs_.push_back(std::move(p));
         return raw;
     }
 
-    template<class... Args>
-    GlobalVariable* make_global_variable(Args&&... args) {
+    template <class... Args> GlobalVariable* make_global_variable(Args&&... args) {
         auto p = std::make_unique<GlobalVariable>(std::forward<Args>(args)...);
         GlobalVariable* raw = p.get();
         globals_.push_back(std::move(p));
@@ -70,7 +65,7 @@ public:
     }
 
     Type* get_char_type() {
-        if(!ty_char_) {
+        if (!ty_char_) {
             auto p = std::make_unique<Type>(TypeKind::TY_CHAR);
             p->set_size(1);
             ty_char_ = p.get();
@@ -103,7 +98,7 @@ public:
         return raw;
     }
 
-    std::string_view  intern_string(std::string str) {
+    std::string_view intern_string(std::string str) {
         auto p = std::make_unique<std::string>(std::move(str));
         std::string_view view = *p;
         strings_.push_back(std::move(p));
