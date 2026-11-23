@@ -168,6 +168,7 @@ enum class NodeKind {
     ND_LT,
     ND_LE,
     ND_EXPR_STMT,
+    ND_STMT_EXPR, // ({...})
     ND_ASSIGN,
     ND_VAR,
     ND_GVAR,

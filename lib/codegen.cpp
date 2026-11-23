@@ -136,6 +136,10 @@ void CodeGen::gen_expr(Node* node) {
         gen_addr(node);
         load(node->get_ty());
         return;
+    case NodeKind::ND_STMT_EXPR:
+        for (Node* n = node->get_body(); n; n = n->get_nextstmt())
+            gen_stmt(n);
+        return;
     case NodeKind::ND_FUNCALL:
         int arg_count = 0;
         for (Node* arg = node->get_args(); arg; arg = arg->get_nextstmt()) {

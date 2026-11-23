@@ -75,6 +75,19 @@ void add_type(Node* node, ASTContext& ctx) {
     case NodeKind::ND_FUNCALL:
         node->set_ty(get_ty_int(ctx));
         return;
+    case NodeKind::ND_STMT_EXPR: {
+        Node* stmt = node->get_body();
+        if (stmt) {
+            while (stmt->get_nextstmt())
+                stmt = stmt->get_nextstmt();
+            if (stmt->get_nodekind() == NodeKind::ND_EXPR_STMT) {
+                node->set_ty(stmt->get_lhs()->get_ty());
+                return;
+            }
+        }
+        diagnostic::error_tok(node->get_tok(),
+                              "statement expression returning void is not supported");
+    }
     default:
         return;
     }

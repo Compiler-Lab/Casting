@@ -554,9 +554,24 @@ Node* Parser::mul() {
     }
 }
 
-// Primary: ( expr ) | ident [ ( args ) ] | num. Ident + "(" -> funcall; else find_var and make
-// ND_VAR.
+// Primary = "(" "{" stmt+ "}" ")"
+//         | "(" expr ")"
+//         | "sizeof" unary
+//         | ident func-args?
+//         | str
+//         | num
 Node* Parser::primary() {
+    if (check("(") && is_followed_by("{")) {
+        Token* expr_tok = peek();
+        Node* node = ctx_.make_node(NodeKind::ND_STMT_EXPR);
+        node->set_tok(expr_tok);
+        expect("(");
+        expect("{");
+        node->set_body(compound_stmt()->get_body());
+        expect(")");
+        return node;
+    }
+
     if (consume("(")) {
         Node* node = expr();
         expect(")");
