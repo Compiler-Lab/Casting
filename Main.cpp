@@ -2,19 +2,18 @@
 #include "context.h"
 #include "parser.h"
 #include "tokenize.h"
+#include "utils.h"
 #include <cstdlib>
-#include <iostream>
 
 int main(int argc, char** argv) {
-    if (argc != 2) {
-        std::cerr << "error: expected exactly one argument (source string)\n";
-        std::exit(1);
-    }
+    CliOptions clis = parse_args(argc, argv);
     ASTContext ctx;
-    Token* token = TokenizeFile(argv[1], ctx);
+    Token* token = TokenizeFile(clis.input_path, ctx);
     Parser parser(token, ctx);
     Program* program_translation_unit = parser.parse();
-    CodeGen codegen;
+    OutputStream os(clis.output_path);
+    CodeGen codegen(os.get());
     codegen.generate(program_translation_unit);
+    os.flush_and_check(clis.output_path);
     return 0;
 }

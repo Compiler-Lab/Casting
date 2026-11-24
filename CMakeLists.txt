@@ -20,6 +20,7 @@ add_library(casting_core STATIC
     lib/parser.cpp
     lib/codegen.cpp
     lib/type.cpp
+    lib/utils.cpp
 )
 
 target_include_directories(casting_core PUBLIC "${CMAKE_SOURCE_DIR}/include")

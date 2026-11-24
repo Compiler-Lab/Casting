@@ -20,7 +20,7 @@ assert() {
   input="$2"
 
  
-  printf '%s\n' "$input" | "$CC" -  > tmp.s || exit
+  printf '%s\n' "$input" | "$CC" -o tmp.s - || exit
   
   gcc -static -o tmp tmp.s tmp2.o
   ./tmp
