@@ -8,6 +8,11 @@
 #include <utility>
 #include <vector>
 
+struct SourceFile {
+    std::string name;
+    std::string content;
+};
+
 // Central ownership for all AST/symbol objects. Parser and codegen hold raw pointers;
 // ASTContext keeps unique_ptrs so that everything is freed when ctx goes out of scope.
 class ASTContext {
@@ -51,6 +56,13 @@ public:
         auto p = std::make_unique<GlobalVariable>(std::forward<Args>(args)...);
         GlobalVariable* raw = p.get();
         globals_.push_back(std::move(p));
+        return raw;
+    }
+
+    template <class... Args> SourceFile* read_source_file(Args&&... args) {
+        auto p = std::make_unique<SourceFile>(std::forward<Args>(args)...);
+        SourceFile* raw = p.get();
+        sourcefile_.push_back(std::move(p));
         return raw;
     }
 
@@ -114,6 +126,7 @@ private:
     std::vector<std::unique_ptr<Program>> programs_;
     std::vector<std::unique_ptr<GlobalVariable>> globals_;
     std::vector<std::unique_ptr<std::string>> strings_;
+    std::vector<std::unique_ptr<SourceFile>> sourcefile_;
     Type* ty_int_ = nullptr;
     Type* ty_char_ = nullptr;
 };

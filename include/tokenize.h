@@ -45,5 +45,7 @@ public:
 
 // Tokenize null-terminated source; tokens are owned by ctx. Returns head of token list.
 Token* Tokenize(char* Input, ASTContext& ctx, const char* filename = "<input>");
+Token* TokenizeFile(std::string_view path, ASTContext& ctx);
+
 void Tkskip(Token*& TK, const char* op);
 bool Tkequal(Token* TK, const char* op);

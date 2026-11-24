@@ -4,7 +4,12 @@
 #include <array>
 #include <cctype>
 #include <cstring>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <string>
 #include <string_view>
+#include <utility>
 
 static constexpr std::array<std::string_view, 4> multi_char_ops = {"==", "!=", ">=", "<="};
 static constexpr std::array<std::string_view, 8> keywords = {"if",    "else", "return", "for",
@@ -163,7 +168,7 @@ static bool is_ident1(char c) {
 static bool is_ident2(char c) { return is_ident1(c) || ('0' <= c && c <= '9'); }
 
 Token* Tokenize(char* Input, ASTContext& ctx, const char* filename) {
-    (void)filename;
+    diagnostic::set_source(filename ? filename : "<input>", std::string_view(Input));
     Token head(TokenKind::EOF_TK, {}, 0);
     Token* current = &head;
 
@@ -229,4 +234,38 @@ Token* Tokenize(char* Input, ASTContext& ctx, const char* filename) {
     current->set_next(eof_token);
     convert_keyword(head.get_next());
     return head.get_next();
+}
+
+static std::string read_file(std::string_view path) {
+    std::ifstream file;
+    std::istream* in = nullptr;
+
+    if (path == "-") {
+        in = &std::cin;
+    } else {
+        file.open(std::string(path), std::ios::binary | std::ios::in);
+        if (!file.is_open()) {
+            diagnostic::fatal("cannot open file: " + std::string(path) + std::strerror(errno));
+        }
+        in = &file;
+    }
+
+    std::ostringstream oss;
+    oss << in->rdbuf();
+    if (in->bad()) {
+        diagnostic::fatal("failed to read " + std::string(path));
+    }
+    std::string content = std::move(oss).str();
+    if (content.empty() || content.back() != '\n') {
+        content.push_back('\n');
+    }
+    return content;
+}
+
+Token* TokenizeFile(std::string_view path, ASTContext& ctx) {
+    std::string content = read_file(path);
+    SourceFile* srcf = ctx.read_source_file();
+    srcf->name = std::string(path);
+    srcf->content = std::move(content);
+    return Tokenize(srcf->content.data(), ctx, srcf->name.data());
 }

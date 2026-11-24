@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
         std::exit(1);
     }
     ASTContext ctx;
-    Token* token = Tokenize(argv[1], ctx);
+    Token* token = TokenizeFile(argv[1], ctx);
     Parser parser(token, ctx);
     Program* program_translation_unit = parser.parse();
     CodeGen codegen;
