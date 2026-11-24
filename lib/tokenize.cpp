@@ -173,6 +173,25 @@ Token* Tokenize(char* Input, ASTContext& ctx, const char* filename) {
     Token* current = &head;
 
     while (*Input) {
+        if (starts_with(Input, "//")) {
+            Input += 2;
+            while (*Input != '\n' && *Input) {
+                Input++;
+            }
+            continue;
+        }
+        if (starts_with(Input, "/*")) {
+            char* temp = Input + 2;
+            while (*temp && !starts_with(temp, "*/")) {
+                ++temp;
+            }
+            if (!*temp) {
+                diagnostic::error_at(std::string_view(Input, 2), "unclosed block comment");
+            }
+            Input = temp + 2;
+            continue;
+        }
+
         if (std::isspace(*Input)) {
             Input++;
             continue;
