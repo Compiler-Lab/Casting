@@ -10,7 +10,7 @@ int main(int argc, char** argv) {
     ASTContext ctx;
     Token* token = TokenizeFile(clis.input_path, ctx);
     Parser parser(token, ctx);
-    Program* program_translation_unit = parser.parse();
+    Program* program_translation_unit = parser.parse(clis.input_path);
     OutputStream os(clis.output_path);
     CodeGen codegen(os.get());
     codegen.generate(program_translation_unit);

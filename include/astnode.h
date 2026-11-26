@@ -150,6 +150,9 @@ public:
         }
     }
 
+    void set_filename(std::string_view filename) { file_name_ = filename; }
+    std::string_view get_filename() const { return file_name_; }
+
 private:
     // TODO: gloable valuables , typedef , .....
     Function* function_begin_ = nullptr;

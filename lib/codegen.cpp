@@ -1,6 +1,7 @@
 #include "codegen.h"
 #include "astnode.h"
 #include "diagnostic.h"
+#include "tokenize.h"
 #include <iostream>
 
 // Round up n to the nearest multiple of align (e.g. 5,8 -> 8; 11,8 -> 16).
@@ -109,6 +110,8 @@ void CodeGen::assign_lvar_offsets(Function* prog) {
 }
 
 void CodeGen::gen_expr(Node* node) {
+    assert(node->get_tok() && node->get_tok()->get_line_no() > 0);
+    out_ << "    .loc 1 " << node->get_tok()->get_line_no() << "\n";
     switch (node->get_nodekind()) {
     case NodeKind::ND_NUM:
         out_ << "    mov $" << node->get_val() << ", %rax\n";
@@ -195,6 +198,8 @@ void CodeGen::gen_expr(Node* node) {
 }
 
 void CodeGen::gen_stmt(Node* node) {
+    assert(node->get_tok() && node->get_tok()->get_line_no() > 0);
+    out_ << "    .loc 1 " << node->get_tok()->get_line_no() << "\n";
     switch (node->get_nodekind()) {
     case NodeKind::ND_IF: {
         int seq = gen_label_seq();
@@ -249,6 +254,7 @@ void CodeGen::gen_stmt(Node* node) {
 
 void CodeGen::generate(Program* program_translation_unit) {
 
+    out_ << ".file 1 \"" << program_translation_unit->get_filename() << "\"\n";
     emit_data(program_translation_unit);
     out_ << "    .text\n";
     assign_lvar_offsets(program_translation_unit->get_function_begin());

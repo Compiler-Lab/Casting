@@ -93,7 +93,7 @@ private:
 public:
     explicit Parser(Token* tk, ASTContext& ctx) : current_(tk), ctx_(ctx) {}
 
-    Program* parse();
+    Program* parse(std::string_view filename);
 
     // --- Token stream: consume/expect/check/peek/advance (parser owns current_, tokens live in
     // ctx) ---

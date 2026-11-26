@@ -6,6 +6,7 @@
 #include "type.h"
 #include <cassert>
 #include <string>
+#include <string_view>
 #include <vector>
 
 void Parser::enter_scope() { scopes_.emplace_back(); }
@@ -22,9 +23,10 @@ void Parser::push_scope(std::string_view name, VarSymbol sym) {
 
 // --- Program: list of function definitions. Types come from declspec/declarator; Obj from
 // declaration(). ---
-Program* Parser::parse() {
+Program* Parser::parse(std::string_view filename) {
 
     program_ = ctx_.make_program();
+    program_->set_filename(filename);
     scopes_.clear();
     enter_scope();
     while (peek()->get_kind() != TokenKind::EOF_TK) {
