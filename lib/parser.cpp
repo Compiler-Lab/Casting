@@ -4,16 +4,34 @@
 #include "diagnostic.h"
 #include "tokenize.h"
 #include "type.h"
+#include <cassert>
+#include <string>
 #include <vector>
+
+void Parser::enter_scope() { scopes_.emplace_back(); }
+
+void Parser::leave_scope() {
+    assert(!scopes_.empty());
+    scopes_.pop_back();
+}
+
+void Parser::push_scope(std::string_view name, VarSymbol sym) {
+    assert(!scopes_.empty());
+    scopes_.back().scope_[std::string(name)] = sym;
+}
 
 // --- Program: list of function definitions. Types come from declspec/declarator; Obj from
 // declaration(). ---
 Program* Parser::parse() {
 
     program_ = ctx_.make_program();
+    scopes_.clear();
+    enter_scope();
     while (peek()->get_kind() != TokenKind::EOF_TK) {
         parse_external_declaration(program_);
     }
+    leave_scope();
+    assert(scopes_.empty());
     return program_;
 }
 // --- Top-level helper function ---
@@ -39,6 +57,7 @@ void Parser::parse_global_declaration(Program* program, Type* basety, Declarator
         }
         GlobalVariable* gv = ctx_.make_global_variable(decl.name_tok->get_content(), decl.type);
         program->append_global_variable(gv);
+        push_scope(gv->get_name(), {nullptr, gv});
 
         if (consume("=")) {
             if (decl.type->get_kind() != TypeKind::TY_INT)
@@ -99,14 +118,6 @@ int Parser::eval_const_expr(Node* node) {
     }
 }
 
-GlobalVariable* Parser::find_gvar_variable(Token* tok) {
-    std::string_view name = tok->get_content();
-    for (GlobalVariable* gv = program_->get_global_variable_begin(); gv; gv = gv->get_next())
-        if (gv->get_name() == name)
-            return gv;
-    return nullptr;
-}
-
 Node* Parser::make_gvar_node(GlobalVariable* gvar, Token* tok) {
     Node* node = ctx_.make_node(NodeKind::ND_GVAR, gvar);
     node->set_tok(tok);
@@ -131,12 +142,14 @@ GlobalVariable* Parser::new_string_literal(Token* tok) {
     return gv;
 }
 
-// --- Local symbols: find by name in current function's locals list ---
-LocalVariable* Parser::find_var(Token* tok) {
-    std::string_view name = tok->get_content();
-    for (LocalVariable* var = locals; var; var = var->get_next())
-        if (var->get_name() == name)
-            return var;
+// --- Symbols: find variable by name from innermost scope to global scope ---
+VarSymbol* Parser::find_var(Token* tok) {
+    std::string key(tok->get_content());
+    for (auto it = scopes_.rbegin(); it != scopes_.rend(); it++) {
+        auto found = it->scope_.find(key);
+        if (found != it->scope_.end())
+            return &(found->second);
+    }
     return nullptr;
 }
 
@@ -149,6 +162,7 @@ Node* Parser::new_var_node(LocalVariable* var, Token* tok) {
 LocalVariable* Parser::new_lvar(const std::string& name, Type* ty) {
     LocalVariable* var = ctx_.make_obj(name, ty, locals);
     locals = var;
+    push_scope(name, {var, nullptr});
     return var;
 }
 
@@ -356,6 +370,7 @@ Node* Parser::compound_stmt() {
     Token* block_tok = peek();
     Node head(NodeKind::ND_EXPR_STMT);
     Node* cur = &head;
+    enter_scope();
 
     while (!check("}")) {
         if (check("int") || check("char"))
@@ -365,6 +380,8 @@ Node* Parser::compound_stmt() {
         cur = cur->get_nextstmt();
         add_type(cur, ctx_);
     }
+
+    leave_scope();
     Node* node = ctx_.make_node(NodeKind::ND_BLOCK);
     node->set_tok(block_tok);
     node->set_body(head.get_nextstmt());
@@ -582,19 +599,15 @@ Node* Parser::primary() {
             return funcall();
         Token* ident_tok = peek();
 
-        if (LocalVariable* var = find_var(peek())) {
-            if (!var)
-                diagnostic::error_tok(ident_tok, "undefined variable");
-            advance();
-            return new_var_node(var, ident_tok);
-        }
+        VarSymbol* vs = find_var(ident_tok);
+        if (!vs)
+            diagnostic::error_tok(ident_tok, "undefined variable");
 
-        if (GlobalVariable* gvar = find_gvar_variable(peek())) {
-            if (!gvar)
-                diagnostic::error_tok(ident_tok, "undefined variable");
-            advance();
-            return make_gvar_node(gvar, ident_tok);
-        }
+        advance();
+        if (vs->localvar_)
+            return new_var_node(vs->localvar_, ident_tok);
+        if (vs->globalvar_)
+            return make_gvar_node(vs->globalvar_, ident_tok);
         diagnostic::error_tok(ident_tok, "undefined variable");
     }
     if (peek()->get_kind() == TokenKind::STR) {
@@ -697,9 +710,11 @@ Function* Parser::parse_function_definition(const DeclaratorResult& decl) {
     // Function parameters behave like predeclared local variables whose initial
     // values come from the calling convention rather than from an assignment in
     // the source program.
+    enter_scope();
     std::vector<LocalVariable*> params = create_param_locals(decl.params);
     expect("{");
     Node* body = compound_stmt();
+    leave_scope();
     Function* fn = ctx_.make_function(body, locals, decl.name_tok->get_content());
     fn->set_params(std::move(params));
     return fn;

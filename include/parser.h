@@ -1,9 +1,21 @@
 #pragma once
 #include "astnode.h"
 #include "tokenize.h"
+#include <string>
 #include <string_view>
+#include <unordered_map>
+#include <vector>
 
 class ASTContext;
+
+struct VarSymbol {
+    LocalVariable* localvar_ = nullptr;
+    GlobalVariable* globalvar_ = nullptr;
+};
+
+struct Scope {
+    std::unordered_map<std::string, VarSymbol> scope_;
+};
 
 // Parsing layers: parse() -> function() -> compound_stmt()/stmt()/declaration() ->
 // expr()/assign()/... Types come from declspec()/declarator(); Obj is created in declaration() and
@@ -17,6 +29,7 @@ private:
     ASTContext& ctx_;
     Program* program_ = nullptr;
 
+    std::vector<Scope> scopes_;
     // --- AST node construction ---
     Node* new_binary(NodeKind kind, Node* lhs, Node* rhs, Token* tok);
     Node* make_binary(NodeKind kind, Node* lhs, Node* rhs, Token* op_tok);
@@ -39,8 +52,8 @@ private:
     Node* assign();        // = (right-associative)
     Node* compound_stmt(); // { stmt* }
 
-    // --- Local symbols: find_var looks up in locals; new_lvar adds and chains ---
-    LocalVariable* find_var(Token* tok);
+    // --- Symbols: find_var looks up across active scopes; new_lvar adds to locals and scope ---
+    VarSymbol* find_var(Token* tok);
     Node* new_var_node(LocalVariable* var, Token* tok);
     LocalVariable* new_lvar(const std::string& name, Type* ty);
 
@@ -61,7 +74,6 @@ private:
     // --- Top-level: one function definition (declspec + declarator + "{" compound_stmt "}") ---
     Function* function();
     Function* parse_function_definition(const DeclaratorResult& decl);
-    GlobalVariable* find_gvar_variable(Token* tok);
 
     void parse_external_declaration(Program* program); // function declaration
     void parse_global_declaration(Program* program, Type* basety,
@@ -73,6 +85,10 @@ private:
     GlobalVariable* new_string_literal(Token* tok);
 
     int eval_const_expr(Node* node);
+
+    void enter_scope();
+    void leave_scope();
+    void push_scope(std::string_view name, VarSymbol sym);
 
 public:
     explicit Parser(Token* tk, ASTContext& ctx) : current_(tk), ctx_(ctx) {}
