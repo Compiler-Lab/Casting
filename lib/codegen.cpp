@@ -152,6 +152,7 @@ void CodeGen::gen_expr(Node* node) {
         for (int i = arg_count - 1; i >= 0; i--) {
             pop(args_regs[i].data());
         }
+        out_ << "    mov $0, %rax\n";
         out_ << "    call " << node->get_func_name() << "\n";
         return;
     }
