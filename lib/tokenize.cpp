@@ -23,14 +23,14 @@ bool Tkequal(Token* TK, const char* op) {
 
 int Token::get_number() const {
     if (this->TKind != TokenKind::NUM) {
-        diagnostic::error_at(this->TKContent, "expected a number");
+        diagnostic::error_tok(this, "expected a number");
     }
     return this->TKval;
 }
 
 void Tkskip(Token*& TK, const char* op) {
     if (!Tkequal(TK, op)) {
-        diagnostic::error_at(TK->get_content(), "expected '" + std::string(op) + "'");
+        diagnostic::error_tok(TK, "expected '" + std::string(op) + "'");
     }
     TK = TK->get_next();
 }
@@ -42,6 +42,20 @@ static bool if_keyword(std::string_view tok_content) {
         }
     }
     return false;
+}
+
+// Initialize line info for all tokens.
+static void add_line_numbers(const char* p, Token* tok) {
+    int n = 1;
+
+    do {
+        if (tok && p == tok->get_content().data()) {
+            tok->set_line_no(n);
+            tok = tok->get_next();
+        }
+        if (*p == '\n')
+            n++;
+    } while (*p++);
 }
 
 static int from_hex(char c) {
@@ -171,6 +185,7 @@ Token* Tokenize(char* Input, ASTContext& ctx, const char* filename) {
     diagnostic::set_source(filename ? filename : "<input>", std::string_view(Input));
     Token head(TokenKind::EOF_TK, {}, 0);
     Token* current = &head;
+    const char* start_back = Input;
 
     while (*Input) {
         if (starts_with(Input, "//")) {
@@ -252,6 +267,7 @@ Token* Tokenize(char* Input, ASTContext& ctx, const char* filename) {
     Token* eof_token = ctx.make_token(TokenKind::EOF_TK, std::string_view(Input, 0));
     current->set_next(eof_token);
     convert_keyword(head.get_next());
+    add_line_numbers(start_back, head.get_next());
     return head.get_next();
 }
 

@@ -64,7 +64,7 @@ void CodeGen::emit_data(Program* program) {
 // the rest of the compiler can treat parameters exactly like ordinary locals.
 void CodeGen::store_function_params(Function* fn) {
     if (fn->get_params().size() > args_regs.size())
-        diagnostic::error_at(fn->get_name(), "too many function parameters");
+        diagnostic::error_tok(fn->get_tok(), "too many function parameters");
 
     for (std::size_t i = 0; i < fn->get_params().size(); ++i) {
         LocalVariable* param = fn->get_params()[i];

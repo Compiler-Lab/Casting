@@ -82,8 +82,8 @@ class Function {
 public:
     Function() = default;
 
-    Function(Node* body, LocalVariable* locals, std::string_view name)
-        : body_(body), locals_(locals), stack_size_(0), next_(nullptr), name_(name) {}
+    Function(Node* body, LocalVariable* locals, std::string_view name, Token* tok)
+        : body_(body), locals_(locals), stack_size_(0), next_(nullptr), name_(name), tok_(tok) {}
 
     Node* get_body() const { return body_; }
     void set_body(Node* body) { body_ = body; }
@@ -96,6 +96,8 @@ public:
     void set_next(Function* fn) { next_ = fn; }
     std::string_view get_name() const { return name_; }
     void set_name(std::string_view n) { name_ = n; }
+    // Token of the function name, used for error reporting.
+    Token* get_tok() const { return tok_; }
 
     const std::vector<LocalVariable*>& get_params() const { return params_; }
     void set_params(std::vector<LocalVariable*> params) { params_ = std::move(params); }
@@ -106,6 +108,7 @@ private:
     int stack_size_ = 0;
     Function* next_ = nullptr;
     std::string_view name_;
+    Token* tok_ = nullptr;
 
     std::vector<LocalVariable*> params_;
 };

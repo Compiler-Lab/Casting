@@ -25,6 +25,8 @@ private:
     Type* TKty_ = nullptr;
     std::string TKstr_;
 
+    int line_no_ = 0; // Line number
+
 public:
     Token(TokenKind kind, std::string_view content, int val)
         : TKind(kind), TKContent(content), TKval(val) {}
@@ -41,6 +43,8 @@ public:
     void set_string(std::string str) { TKstr_ = str; }
     Type* get_type() const { return TKty_; }
     std::string get_string() const { return TKstr_; }
+    void set_line_no(int n) { line_no_ = n; }
+    int get_line_no() const { return line_no_; }
 };
 
 // Tokenize null-terminated source; tokens are owned by ctx. Returns head of token list.

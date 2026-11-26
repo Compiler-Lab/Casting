@@ -76,7 +76,7 @@ void Parser::parse_global_declaration(Program* program, Type* basety, Declarator
 
 int Parser::eval_const_expr(Node* node) {
     if (!node)
-        diagnostic::error_at(peek()->get_content(), "expected a constant expression");
+        diagnostic::error_tok(peek(), "expected a constant expression");
 
     switch (node->get_nodekind()) {
     case NodeKind::ND_NUM:
@@ -244,7 +244,7 @@ Type* Parser::declspec() {
     if (consume("char")) {
         return ctx_.get_char_type();
     }
-    diagnostic::error_at(peek()->get_content(), "expected int or char");
+    diagnostic::error_tok(peek(), "expected int or char");
 }
 
 Type* Parser::type_suffix(Type* ty, std::vector<ParsedParam>& params) {
@@ -313,7 +313,7 @@ DeclaratorResult Parser::declarator(Type* basety) {
         ty = ctx_.make_ptr_type(ty);
 
     if (peek()->get_kind() != TokenKind::IDENT)
-        diagnostic::error_at(peek()->get_content(), "expected an identifier");
+        diagnostic::error_tok(peek(), "expected an identifier");
     Token* ident_tok = peek();
     advance();
 
@@ -624,7 +624,7 @@ Node* Parser::primary() {
         advance();
         return node;
     }
-    diagnostic::error_at(peek()->get_content(), "expected an expression");
+    diagnostic::error_tok(peek(), "expected an expression");
 }
 
 // Postfix: operator [ ]
@@ -715,7 +715,7 @@ Function* Parser::parse_function_definition(const DeclaratorResult& decl) {
     expect("{");
     Node* body = compound_stmt();
     leave_scope();
-    Function* fn = ctx_.make_function(body, locals, decl.name_tok->get_content());
+    Function* fn = ctx_.make_function(body, locals, decl.name_tok->get_content(), decl.name_tok);
     fn->set_params(std::move(params));
     return fn;
 }
